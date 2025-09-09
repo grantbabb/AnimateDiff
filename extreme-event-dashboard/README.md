@@ -5,7 +5,7 @@ Monorepo for a React web dashboard, AWS IaC (Terraform), ML models (floods & fir
 ## Structure
 
 - web/ — React + Vite frontend with a TimeLapsePlayer component
-- infra/terraform — AWS Terraform skeleton (providers, variables, example modules)
+- infra/cloudformation — AWS CloudFormation template for core resources
 - ml/ — ML models for floods and fires
 - pipelines/training — Training pipeline placeholder (Dockerfile, script)
 - pipelines/inference — Inference pipeline placeholder (Dockerfile, script)
@@ -16,6 +16,17 @@ Monorepo for a React web dashboard, AWS IaC (Terraform), ML models (floods & fir
 cd web
 npm install
 npm run dev
+```
+
+## Quickstart: CloudFormation
+
+```bash
+cd infra/cloudformation
+aws cloudformation deploy \
+  --template-file template.yaml \
+  --stack-name eed-core-dev \
+  --parameter-overrides Environment=dev CreateSampleResources=true ArtifactBucketName=<UNIQUE_BUCKET_NAME> \
+  --capabilities CAPABILITY_NAMED_IAM
 ```
 
 ## Quickstart: Training

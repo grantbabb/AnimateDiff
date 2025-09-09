@@ -1,0 +1,98 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Extreme Event Dashboard - Core Infrastructure (S3, ECR, Lambda, SQS)
+
+Parameters:
+  Environment:
+    Type: String
+    Default: dev
+    AllowedValues: [dev, staging, prod]
+    Description: Deployment environment name
+  ArtifactBucketName:
+    Type: String
+    Default: eed-artifacts-DEV-CHANGE-ME
+    Description: S3 bucket name for model artifacts (must be globally unique)
+  CreateSampleResources:
+    Type: String
+    Default: 'true'
+    AllowedValues: ['true', 'false']
+    Description: Whether to create sample resources for the skeleton
+
+Conditions:
+  CreateSamples: !Equals [!Ref CreateSampleResources, 'true']
+
+Resources:
+  # S3 bucket for model artifacts (optional)
+  ArtifactBucket:
+    Type: AWS::S3::Bucket
+    Condition: CreateSamples
+    Properties:
+      BucketName: !Ref ArtifactBucketName
+      VersioningConfiguration:
+        Status: Enabled
+
+  # ECR repositories for training and inference images (optional)
+  TrainingRepository:
+    Type: AWS::ECR::Repository
+    Condition: CreateSamples
+    Properties:
+      RepositoryName: !Sub eed-training-${Environment}
+
+  InferenceRepository:
+    Type: AWS::ECR::Repository
+    Condition: CreateSamples
+    Properties:
+      RepositoryName: !Sub eed-inference-${Environment}
+
+  # IAM role for Lambda (basic execution)
+  InferenceLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+
+  # SQS queue for async inference jobs (optional)
+  InferenceJobsQueue:
+    Type: AWS::SQS::Queue
+    Condition: CreateSamples
+    Properties:
+      QueueName: !Sub eed-inference-jobs-${Environment}
+
+  # Placeholder Lambda function, code/package to be provided later
+  InferenceLambda:
+    Type: AWS::Lambda::Function
+    Condition: CreateSamples
+    Properties:
+      FunctionName: !Sub eed-inference-${Environment}
+      Runtime: python3.11
+      Role: !GetAtt InferenceLambdaRole.Arn
+      Handler: handler.main
+      Code:
+        ZipFile: |
+          def main(event, context):
+              return {"statusCode": 200, "body": "ok"}
+
+Outputs:
+  ArtifactBucketNameOut:
+    Condition: CreateSamples
+    Description: Artifact bucket name
+    Value: !Ref ArtifactBucket
+  TrainingRepositoryUri:
+    Condition: CreateSamples
+    Description: ECR repo URI for training
+    Value: !Sub ${TrainingRepository.RepositoryUri}
+  InferenceRepositoryUri:
+    Condition: CreateSamples
+    Description: ECR repo URI for inference
+    Value: !Sub ${InferenceRepository.RepositoryUri}
+  InferenceLambdaName:
+    Condition: CreateSamples
+    Description: Inference Lambda function name
+    Value: !Ref InferenceLambda
+
